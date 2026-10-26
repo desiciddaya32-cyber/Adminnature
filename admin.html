@@ -1,0 +1,105 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>QuizBattleWar Admin</title><style>
+:root{color-scheme:dark;--bg:#080d1b;--panel:#121b30;--line:#26395d;--gold:#ffc83d;--cyan:#37d9ff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#15305b,#080d1b 60%);color:#f4f7ff;font-family:system-ui,Arial,sans-serif;max-width:850px;padding:16px;margin:auto}h1{font-size:27px;margin:10px 0}h2{font-size:19px}.muted{color:#9aabc9;font-size:13px}.card{background:#121b30;border:1px solid #26395d;border-radius:18px;padding:16px;margin:14px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}input,select,textarea{width:100%;padding:11px;margin:6px 0 12px;border-radius:10px;border:1px solid #34466b;background:#080f20;color:white}button{border:0;border-radius:11px;padding:12px 15px;font-weight:800;background:#243451;color:white;margin:3px;cursor:pointer}.gold{background:linear-gradient(90deg,#ffdf67,#ffb52e);color:#18130a}.danger{background:#9d2b44}.hidden{display:none!important}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}.status{padding:12px;border-radius:10px;background:#091327;color:#bdefff;white-space:pre-wrap}.item{border-top:1px solid #26395d;padding:10px 0}.small{font-size:12px;color:#aab9d4}
+</style></head><body><h1>🛡️ QuizBattleWar Admin</h1><p class="muted">अलग Admin App · यहाँ publish किए बदलाव गेम में Firebase के ज़रिए पहुँचेंगे। यह केवल अधिकृत Admin UID को अनुमति देता है।</p>
+<div class="card" id="loginCard"><h2>Admin Login</h2><p class="muted">उसी Google account से login करें जिसका UID आपके Firebase Rules में Admin के रूप में सेट है।</p><button class="gold" id="login">🔐 Google से Admin Login</button><div id="authStatus" class="status">Login करें।</div></div>
+<div id="panel" class="hidden"><div class="card"><div class="row"><div><b id="adminName">Admin</b><div class="small" id="adminUid"></div></div><button id="logout">Logout</button></div><div id="status" class="status">Firebase से कनेक्ट करें।</div></div>
+<div class="grid"><section class="card"><h2>🏆 Tournament Creator</h2><label>नाम<input id="tName" placeholder="Science Champion Cup"></label><label>विषय<select id="tSubject"><option value="science">Science</option><option value="math">Maths</option><option value="gk">General Knowledge</option><option value="mixed">Mixed</option></select></label><div class="row"><label>Questions<input id="tCount" type="number" value="10" min="1" max="100"></label><label>Reward Coins<input id="tReward" type="number" value="100" min="0" max="10000"></label></div><button class="gold" id="addTournament">＋ Tournament Publish</button><div id="tList"></div></section>
+<section class="card"><h2>💎 Offer Manager</h2><label>Offer Title<input id="oName" value="₹10 = 200 Diamonds"></label><div class="row"><label>Price ₹<input id="oPrice" type="number" value="10" min="1"></label><label>Diamonds<input id="oDiamonds" type="number" value="200" min="1"></label></div><button class="gold" id="saveOffer">Publish Offer</button><p class="small">यह offer display update करेगा। असली payment के लिए अलग verified payment gateway आवश्यक है।</p></section>
+<section class="card"><h2>🤖 Gemini 3.8 Flash — AI Questions</h2><label>Gemini API key (इस session में ही रखी जाएगी)<input id="apiKey" type="password" autocomplete="off" placeholder="Paste API key"></label><div class="row"><label>Subject<select id="qSubject"><option>Science</option><option>Math</option><option>GK</option><option>Mixed</option></select></label><label>Difficulty<select id="qDiff"><option>Easy</option><option selected>Medium</option><option>Hard</option></select></label></div><label>Questions<select id="qCount"><option>10</option><option>25</option><option>50</option><option selected>100</option></select></label><button class="gold" id="generate" type="button">Generate & Publish</button><div id="generateStatus" class="status" aria-live="polite">Button दबाकर सवाल generate करें।</div><p class="small">API key browser में इस्तेमाल होगी और इसे सार्वजनिक Admin link में कभी न रखें। Published questions players को उपलब्ध होंगे। बेहतर सुरक्षा के लिए server-side key proxy recommended है।</p></section>
+<section class="card"><h2>🎵 Music Manager — Upload & Publish</h2><label>Track name<input id="mName" placeholder="Battle music"></label><label>Music file चुनें (MP3, WAV, OGG आदि)<input id="mFile" type="file" accept="audio/*"></label><label>Category<select id="mMood"><option>Epic Battle</option><option>Fun</option><option>Calm</option><option>Emotional</option></select></label><button class="gold" id="uploadMusic">Upload & Save to Game</button><div id="musicUploadStatus" class="small" aria-live="polite"></div><div id="mList"></div><p class="small">फ़ाइल Firebase Storage में upload होगी और उसका public download URL appSettings/music में publish होगा। Firebase Storage Rules में Admin UID को write access देना ज़रूरी है। केवल वही music upload करें जिसकी अनुमति आपके पास है।</p></section></div>
+<div class="card"><h2>📚 Published Questions</h2><div id="qList" class="small">No questions loaded yet.</div><button id="publishAll" class="gold">Save All Changes to Firebase</button><button id="refresh">Refresh</button></div>
+<div class="card"><h2>🔗 App connection</h2><p class="small">दोनों HTML files को host करें। गेम में Firebase Realtime Database का <code>appSettings</code> path listen किया जाता है। Database Rules में केवल Admin UID को write permission दें; public reads allow करने पर ही game settings पढ़ पाएगा।</p></div></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script><script>
+const firebaseConfig={apiKey:"AIzaSyBqp2ini2LdLjC7jW7S314XzSLi-VGzrcU",authDomain:"quizbattleonline-e0a10.firebaseapp.com",databaseURL:"https://quizbattleonline-e0a10-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"quizbattleonline-e0a10",storageBucket:"quizbattleonline-e0a10.firebasestorage.app",messagingSenderId:"473067012947",appId:"1:473067012947:web:c7f0377dac3e102d2617a6"};
+const ADMIN_UID='L0YvKVpAcKgiABKed93JgOa9qWj2';firebase.initializeApp(firebaseConfig);const auth=firebase.auth(),db=firebase.database(),storage=firebase.storage();let settings={tournaments:[],questions:[],music:[],offer:{name:'₹10 = 200 Diamonds',price:10,diamonds:200}};const $=id=>document.getElementById(id);function msg(s){$('status').textContent=s}function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+$('login').onclick=async()=>{try{await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())}catch(e){$('authStatus').textContent=e.code+' — '+e.message}};$('logout').onclick=()=>auth.signOut();auth.onAuthStateChanged(async u=>{if(!u){$('panel').classList.add('hidden');$('loginCard').classList.remove('hidden');return}if(u.uid!==ADMIN_UID){await auth.signOut();$('authStatus').textContent='Access denied: यह Google account Admin UID से match नहीं करता।';return}$('loginCard').classList.add('hidden');$('panel').classList.remove('hidden');$('adminName').textContent=u.displayName||u.email;$('adminUid').textContent='Verified Admin UID: '+u.uid;try{const s=await db.ref('appSettings').once('value');if(s.exists())settings={...settings,...s.val()};render();msg('Admin login सफल। Firebase settings loaded.')}catch(e){msg('Firebase read failed: '+e.message)}});
+function render(){$('tList').innerHTML=(settings.tournaments||[]).map((t,i)=>`<div class="item"><b>${esc(t.name)}</b><div class="small">${esc(t.subject)} · ${t.count} questions · ${t.reward} coins</div><button class="danger" onclick="delT(${i})">Delete</button></div>`).join('')||'<p class="small">No tournaments yet.</p>';$('qList').textContent=(settings.questions||[]).length+' questions published';$('mList').innerHTML=(settings.music||[]).map((m,i)=>`<div class="item"><b>${esc(m.name)}</b><div class="small">${esc(m.mood||'Music')} · ${m.url?'Published to game':'No URL'}</div><button class="danger" onclick="delM(${i})">Delete from game</button></div>`).join('')||'<p class="small">अभी कोई music publish नहीं हुआ।</p>';if(settings.offer){$('oName').value=settings.offer.name||'';$('oPrice').value=settings.offer.price||10;$('oDiamonds').value=settings.offer.diamonds||200}}
+window.delT=i=>{settings.tournaments.splice(i,1);render()};window.delM=async i=>{const track=settings.music[i];if(!confirm('इस track को game की published music list से हटाएँ?'))return;try{if(track&&track.storagePath){await storage.ref(track.storagePath).delete().catch(()=>{});}settings.music.splice(i,1);render();await publish();}catch(e){msg('Music delete failed: '+e.message)}};$('addTournament').onclick=()=>{let name=$('tName').value.trim();if(!name)return alert('Tournament name डालें');settings.tournaments.push({id:Date.now(),name,subject:$('tSubject').value,count:Math.max(1,Math.min(100,+$('tCount').value||10)),reward:Math.max(0,Math.min(10000,+$('tReward').value||0))});$('tName').value='';render();publish()};$('saveOffer').onclick=()=>{settings.offer={name:$('oName').value.trim()||'Special Offer',price:Math.max(1,+$('oPrice').value||10),diamonds:Math.max(1,+$('oDiamonds').value||200)};publish()};$('uploadMusic').onclick=async()=>{
+ const file=$('mFile').files&&$('mFile').files[0];
+ const name=$('mName').value.trim()||(file&&file.name)||'QuizBattleWar Music';
+ const status=$('musicUploadStatus');
+ if(!auth.currentUser||auth.currentUser.uid!==ADMIN_UID)return alert('पहले अधिकृत Admin Google account से login करें।');
+ if(!file)return alert('पहले अपने फोन/कंप्यूटर से audio file चुनें।');
+ if(!file.type.startsWith('audio/'))return alert('कृपया audio file चुनें।');
+ if(file.size>25*1024*1024)return alert('Audio file 25 MB से छोटी रखें।');
+ const ext=(file.name.split('.').pop()||'audio').replace(/[^a-z0-9]/gi,'').toLowerCase();
+ const storagePath='admin-music/'+auth.currentUser.uid+'/'+Date.now()+'_'+Math.random().toString(36).slice(2)+'.'+ext;
+ const ref=storage.ref(storagePath);
+ try{
+  status.textContent='Firebase Storage पर upload हो रहा है…';
+  const task=ref.put(file,{contentType:file.type,customMetadata:{trackName:name,mood:$('mMood').value,uploadedBy:auth.currentUser.uid}});
+  await new Promise((resolve,reject)=>task.on('state_changed',snap=>{const pct=snap.totalBytes?Math.round(snap.bytesTransferred/snap.totalBytes*100):0;status.textContent='Uploading music… '+pct+'%';},reject,resolve));
+  const url=await ref.getDownloadURL();
+  settings.music=settings.music||[];
+  settings.music.push({id:Date.now(),name,url,mood:$('mMood').value,storagePath,contentType:file.type,size:file.size,uploadedAt:Date.now()});
+  await publish();
+  $('mName').value='';$('mFile').value='';render();
+  status.textContent='Music upload और Firebase publish पूरा हुआ। Game app appSettings से इस track की जानकारी प्राप्त कर सकता है।';
+ }catch(e){status.textContent='Upload नहीं हुआ: '+(e.message||e.code||'Unknown error')+'. Firebase Storage चालू करें और Storage Rules में Admin UID को write access दें।';}
+};
+$('generate').onclick=async()=>{
+ const key=$('apiKey').value.trim();
+ if(!key){$('generateStatus').textContent='पहले Gemini API key डालें।';return alert('Gemini API key डालें')}
+ $('generate').disabled=true;$('generateStatus').textContent='Gemini से सवाल माँगे जा रहे हैं…';
+ const count=+$('qCount').value,subject=$('qSubject').value,diff=$('qDiff').value;
+ msg('Gemini 3.8 Flash से सवाल बन रहे हैं…');$('generateStatus').textContent='Gemini से सवाल माँगे जा रहे हैं… कृपया प्रतीक्षा करें।';
+ try{
+  const prompt=`Generate exactly ${count} multiple-choice educational quiz questions in simple Hindi. Subject=${subject}; difficulty=${diff}. Make questions varied and avoid repeats. Return only a JSON array; each item must be {"c":"Science|Math|GK","q":"question","a":["option A","option B","option C","option D"],"ok":0,"why":"short explanation in Hindi"}. The ok field is a zero-based integer from 0 to 3. No markdown.`;
+  const schema={
+   type:"array",
+   items:{
+    type:"object",
+    properties:{
+     c:{type:"string"},
+     q:{type:"string"},
+     a:{type:"array",items:{type:"string"}},
+     ok:{type:"integer"},
+     why:{type:"string"}
+    },
+    required:["c","q","a","ok","why"]
+   }
+  };
+  const res=await fetch('https://generativelanguage.googleapis.com/v1beta/interactions',{
+   method:'POST',
+   headers:{'Content-Type':'application/json','x-goog-api-key':key},
+   body:JSON.stringify({
+    model:'gemini-3.8-flash',
+    input:prompt,
+    response_format:{type:'text',mime_type:'application/json',schema}
+   })
+  });
+  const data=await res.json();
+  if(!res.ok)throw Error(data.error?.message||data.message||('Gemini API error (HTTP '+res.status+')'));
+  let raw=data.output_text;
+  if(!raw&&Array.isArray(data.steps)){
+   raw=data.steps.filter(s=>s.type==='model_output')
+    .flatMap(s=>Array.isArray(s.content)?s.content:[])
+    .filter(c=>c.type==='text'&&typeof c.text==='string')
+    .map(c=>c.text).join('');
+  }
+  if(!raw)throw Error('Gemini response में text नहीं मिला।');
+  raw=raw.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
+  const qs=JSON.parse(raw);
+  if(!Array.isArray(qs))throw Error('JSON array नहीं मिला');
+  if(!Array.isArray(settings.questions))settings.questions=[];
+  const seen=new Set(settings.questions.map(q=>String(q.q||'').trim().toLowerCase()));
+  let added=0;
+  const valid=qs.filter(q=>q&&q.q&&Array.isArray(q.a)&&q.a.length===4&&q.a.every(a=>typeof a==='string')&&Number.isInteger(q.ok)&&q.ok>=0&&q.ok<4)
+   .map(q=>({
+    c:['Math','Science','GK'].includes(q.c)?q.c:(subject==='Math'?'Math':subject==='Science'?'Science':'GK'),
+    q:String(q.q).trim(),a:q.a.map(String),ok:q.ok,why:String(q.why||''),custom:true,aiGenerated:true
+   }));
+  valid.forEach(q=>{
+   const k=q.q.toLowerCase();
+   if(k&&!seen.has(k)){seen.add(k);settings.questions.push(q);added++}
+  });
+  render();
+  await publish();
+  $('apiKey').value='';
+  msg('Gemini 3.8 Flash से '+valid.length+' valid सवाल मिले; '+added+' नए सवाल Firebase में publish किए गए। API key इस पेज में save नहीं की गई।');$('generateStatus').textContent='सफल: '+added+' नए सवाल Firebase में publish हुए।';
+ }catch(e){
+  msg('AI error: '+e.message+'\\nअगर API key सही है, तो Google AI Studio में model access और API enablement जाँचें।');
+ }
+};
+async function publish(){try{await db.ref('appSettings').set({...settings,updatedAt:Date.now(),updatedBy:auth.currentUser.uid});msg('Changes published to Firebase. Game app will receive them when connected.')}catch(e){msg('Publish failed: '+e.message+' — Firebase Rules check करें')}}$('publishAll').onclick=publish;$('refresh').onclick=async()=>{try{const s=await db.ref('appSettings').once('value');if(s.exists())settings={...settings,...s.val()};render();msg('Settings refreshed.')}catch(e){msg(e.message)}};
+</script></body></html>
